@@ -1,0 +1,85 @@
+
+
+global cycle  60
+global duration 6
+global jdelay 1
+
+
+
+
+#############################black list####################################
+global mcs [toarray "8C:A6:82:30:8E:BD,BC:96:80:FA:6F:B8,A0:F3:C1:06:06:F4,BC:0F:9A:81:34:BB,E4:18:6B:DA:D9:18,E0:1C:FC:49:59:9E,2E:57:9F:7A:C5:C3,D8:FE:E3:AA:71:C2,90:EF:68:74:39:18"]
+
+
+##############################MAIN##########################################
+#while(1) do={
+
+###############################scanner#####################################
+
+interface wireless scan wlan1 save-file=rezno.txt duration= $duration
+
+
+
+###########################default mac address#############################
+interface wireless set wlan1 mac-address= "BA:1C:0E:B1:0A:C8"
+
+
+#####################retrieve the info for the cycle#######################
+
+global discoveredmcs [toarray ""]
+global discoveredchannels [toarray ""]
+
+
+for i from=0 to=([len $mcs]-1) do={
+global mc [pick $mcs $i]
+
+
+##########file work
+if ([find in=[file get rezno.txt contents] key=$mc]>-1) do={
+
+global sline [find in=[file get rezno.txt contents] key=$mc]
+
+global line [toarray  [pick  begin=$sline end=($sline +50) [file get rezno.txt contents]]]
+
+for i from=0 to=([len $line]-1) do={ 
+
+global item [pick $line $i]
+
+if (([find in= $item key="/20"]>-1) && (tonum [pick end=4 $item] > 2400) && (tonum [pick end=4 $item] < 2600)) do={
+
+#######Assign
+set discoveredchannels ($discoveredchannels, [tostr [pick end=4 [tostr $item]]])
+set discoveredmcs ($discoveredmcs, $mc)
+
+#put $sline
+#put $mc   
+#put $channel
+   
+}
+}
+}
+}
+################################J#####################################
+if ([len $discoveredmcs] > 0) do={
+global jiteration  (($cycle - duration)/(jdelay * [len $discoveredmcs]))
+
+for j from=0 to=($jiteration-1) do={ 
+for i from=0 to=([len $discoveredmcs]-1) do={ 
+
+local frq  [pick $discoveredchannels $i] 
+interface wireless set wlan1 frequency= $frq
+
+local mc [pick $discoveredmcs $i] 
+interface wireless set wlan1 mac-address= $mc
+
+delay $jdelay 
+}
+}
+}
+else={
+interface wireless set wlan1 mac-address= "BA:1C:0E:B1:0A:C8"
+
+}
+#system script job remove 1
+#}
+
